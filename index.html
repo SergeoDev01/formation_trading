@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Feedback UI - Reproduction Rive</title>
+    <style>
+        :root {
+            --bg-app: #1a1a1a;
+            --bg-panel: #212121;
+            --bg-panel-alt: #1e1e1e;
+            --bg-canvas: #111111;
+            --bg-selected: #2a3535;
+            --border: #2e2e2e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888888;
+            --accent: #00c4a0;
+            --playhead: #f0820f;
+            --keyframe: #f0820f;
+            --selection: #3d8eff;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-app);
+            color: var(--text-primary);
+            font-family: Arial, sans-serif;
+        }
+
+        main {
+            display: flex;
+            padding: 0 20px;
+            min-height: 100vh;
+        }
+
+        /* TOP TOOLBAR */
+        .top-toolbar {
+            background: var(--bg-panel);
+            height: 48px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+        }
+
+        .logocontainer, .toolcontainer, .centercontainer, .exportarea {
+            display: flex;
+            align-items: center;
+        }
+
+        /* LOGO (Custom SVG) */
+        .logocontainer {
+            width: 60px;
+            padding-left: 16px;
+        }
+        .logo {
+            position: relative;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+        .logo svg {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            fill: #fff;
+            width: 32px; height: 32px;
+        }
+
+        /* TOOLS */
+        .toolcontainer {
+            width: 210px;
+            padding: 0 12px;
+        }
+        .tools {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+        }
+        .tool-button {
+            cursor: pointer;
+            position: relative;
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tool-button:not(:last-child)::after {
+            content: ' ';
+            position: absolute;
+            right: 0; top: 50%;
+            height: 32px;
+            width: 1px;
+            background: var(--border);
+        }
+
+        /* ICONS */
+        .icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 32px; height: 32px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
+        .icon:hover { background: rgba(255, 255, 255, 0.4); }
+
+        .icon-select { background: #fff; }
+        .icon-select:hover { background: #00c4a0 !important; }
+        .icon-select svg { color: #00c4a0; }
+
+        /* ZOOM CONTROLS */
+        .zoom-controls {
+            display: flex;
+            margin: 0 12px;
+            gap: 8px;
+        }
+        .zoom-controls button {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+        .zoom-controls button.active { background: var(--accent); }
+
+        .centercontainer {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            margin: 0 16px;
+        }
+
+        /* BREADCRUMB */
+        .centercontainer .breadcrumb {
+            margin: 0 16px;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        /* EXPORT BUTTONS */
+        .exportarea {
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-right: 16px;
+        }
+        .exportarea .button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .exportarea .button:hover {
+            background: #00d8b0; /* légèrement plus clair */
+        }
+
+        /* OUTLINER/PROPERTIES */
+        .sidebar-left { width: 260px; }
+        .sidebar-right { width: 200px; }
+
+        .tabs {
+            background: var(--bg-panel-alt);
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .tab {
+            padding: 4px 8px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+        }
+        .tab.active {
+            background: var(--accent);
+            color: white;
+            border-radius: 4px;
+        }
+
+        .outlined {
+            height: calc(100vh - 48px);
+            overflow-y: auto;
+            background: var(--bg-panel-alt);
+        }
+
+        .tree {
+            padding: 12px 0;
+            margin: 0 16px;
+            min-height: 80vh;
+        }
+
+        .tree-item {
+            padding-left: 16px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 24px;
+        }
+        .tree-item:hover { background: var(--bg-selected); }
+        .expand-btn {
+            position: absolute;
+            right: 0;
+0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .expand-btn:hover { color: var(--text-primary); }
+
+        .tree-item-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tree-item-icon.group {
+            background: #fff;
+            border-radius: 3px;
+        }
+        .tree-item-icon.ellipse {
+            background: #fff;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+        }
+        .tree-item-icon.effect {
+            background: #fff;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            transform: rotate(45deg);
+        }
+
+        /* PROPERTIES PANEL */
+        .properties {
+            height: calc(100vh - 48px);
+            overflow-y: auto;
+            padding: 12px 0;
+            background: var(--bg-panel-alt);
+        }
+
+        .property-section {
+            margin: 12px 0;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+        .property-section-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .property-section-title::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+        }
+
+        .property-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .property-label {
+            width: 60px;
+            text-align: right;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .value-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .value {
+            flex: 1;
+            min-width: 60px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: var(--text-primary);
+            font-family: monospace;
+        }
+        .keyframe-btn {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+        }
+        .keyframe-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+        .keyframe-btn:hover {
+            background: #f0f0f0;
+        }
+
+        /* PROPORTIONAL LINK */
+        .proportional-link {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+        }
+        .proportional-link button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .proportional-link button.active {
+            color: var(--accent);
+        }
+        .proportional-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* CANVAS */
+        .canvas {
+            background: var(--bg-canvas);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .canvas-controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            width: 100%;
+            justify-content: space-between;
+        }
+        .canvas-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .zoom-indicator {
+            width: 24px;
+            height: 16px;
+            background: var(--playhead);
+            border: 2px solid #fff;
+        }
+
+        .canvas-area {
+            width: 100%;
+            height: 400px;
+            background: #fff;
+            border: 2px dashed #ccc;
+            position: relative;
+            overflow: hidden;
+        }
+        .canvas-area svg {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+        }
+        .selection-box {
+            position: absolute;
+            border: 2px dashed var(--selection);
+            background: rgba(61, 142, 255, 0.1);
+            pointer-events: none;
+        }
+        .selection-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--selection);
+            border: 2px solid #fff;
+            border-radius: 2px;
+            transform: translate(-50%, -50%);
+        }
+        .move-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--selection);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* TIMELINE */
+        .timeline {
+            flex-grow: 1;
+            background: #1a2a2a;
+            display: flex;
+            padding: 24px;
+            gap: 16px;
+        }
+
+        .timeline-left {
+            width: 260px;
+            background: #212121;
+            display: flex;
+            flex-direction: column;
+        }
+        .timeline-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* TIMELINE LAYERS */
+        .timeline-layers {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .timeline-layer-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            cursor: pointer;
+        }
+        .timeline-layer-item:hover { background: var(--bg-selected); }
+        .timeline-layer-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .timeline-layer-name {
+            color: var(--text-primary);
+            font-size: 14px;
+            flex: 1;
+        }
+        .timeline-layer-ops {
+            display: flex;
+            gap: 4px;
+        }
+        .timeline-layer-ops button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+        .timeline-layer-ops button:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* TIMELINE TRACKS */
+        .timeline-tracks {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .timeline-ruler {
+            height: 24px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            overflow: hidden;
+        }
+        .timeline-ruler div {
+            flex: 1;
+            text-align: center;
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+        .timeline-ruler div:first-child { border-left: none; }
+
+        .playhead-container {
+            position: relative;
+            height: 100%;
+        }
+        .playhead-line {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--playhead);
+        }
+        .playhead-label {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--playhead);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+        .playhead-label::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid var(--playhead);
+        }
+
+        .track-container {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+        .track-bar {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            height: 16px;
+            background: var(--accent);
+            transform: translateY(-50%);
+        }
+        .track-label {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-primary);
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        /* PLAYBACK CONTROLS */
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        .playback-controls button {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+        .playback-controls button:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-primary);
+        }
+        .playback-controls button.active {
+            background: var(--accent);
+            color: white;
+        }
+        .playback-controls .dropdown {
+            position: relative;
+        }
+        .playback-controls .dropdown-button {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-panel);
+        }
+        .playback-controls .dropdown-button.active {
+            background: var(--accent);
+            color: white;
+        }
+        .playback-controls .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px 0;
+            min-width: 120px;
+            z-index: 1000;
+            display: none;
+        }
+        .playback-controls .dropdown-menu.show { display: block; }
+        .playback-controls .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        .playback-controls .dropdown-item:hover {
+            background: var(--bg-panel-alt);
+        }
+
+        /* CANVAS ZOOM INDICATOR (en haut à gauche du canvas) */
+        .canvas-zoom-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: var(--playhead);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* RESPONSIVE ADJUSTMENTS */
+        @media (max-width: 1200px) {
+            .sidebar-left { width: 220px; }
+            .sidebar-right { width: 180px; }
+        }
+        @media (max-width: 900px) {
+            main { flex-direction: column; }
+            .sidebar-left, .sidebar-right {
+                width: 100%;
+                height: auto;
+                max-height: 200px;
+            }
+            .timeline { height: 180px; }
+            .canvas { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <!-- TOP TOOLBAR -->
+        <div class="top-toolbar">
+            <div class="logocontainer">
+                <div class="logo">
+                    <!-- Logo simple: lettre "R" stylisée -->
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2L2 22h4l4-8h8l4 8h4z" fill="none" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Outils -->
+            <div class="toolcontainer">
+                <div class="tools">
+                    <div class="tool-button" title="Select (V)">
+                        <svg class="icon icon-select" viewBox="0 0 24 24">
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                        </svg>
+                    </div>
+                    <div class="tool-button" title="Transform">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/>
+                        </svg>
+                    </div>
+                    <div class="tool-button" title="Rectangle (R)">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <rect x="2" y="2" width="20" height="20"/>
+                        </svg>
+                    </div>
+                    <div class="tool-button" title="Pen/Path (P)">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M12 1L2 19h3l6.5-18h6.5l3 19z"/>
+                        </svg>
+                    </div>
+                    <div class="tool-button" title="Texte (T)">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M4 12h2l4 9h6l4-9h2L9 2H6z"/>
+                        </svg>
+                    </div>
+                    <div class="tool-button" title="Main (H)">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path d="M8 7h6m0 0l-3 3m3-3v10"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Centre -->
+            <div class="centercontainer">
+                <div class="breadcrumb">Drafts / Untitled file ▾</div>
+            </div>
+
+            <!-- Actions droite -->
+            <div class="exportarea">
+                <button class="button feedback">Feedback</button>
+                <button class="button share">Share</button>
+                <button class="button export active">Export</button>
+                <!-- Avatar utilisateur (placeholder) -->
+                <div style="width: 32px; height: 32px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #333;">U</div>
+            </div>
+        </div>
+
+        <!-- CONTENU PRINCIPAL -->
+        <div class="sidebar-left">
+            <!-- ICON BAR (GAUCHE) -->
+            <div class="icon-bar" style="position: fixed; left: 0; top: 48px; width: 24px; height: calc(100vh - 48px); background: var(--bg-panel); display: flex; flex-direction: column; align-items: stretch; padding: 24px 0; overflow-y: auto;">
+                <div class="icon-item" title="Layers/Scene" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Layers</div>
+                <div class="icon-item" title="Animations" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Anim</div>
+                <div class="icon-item" title="Assets/Import" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Assets</div>
+                <div class="icon-item" title="Components" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Comp</div>
+                <div class="icon-item" title="Data/Bindings" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Data</div>
+                <div style="height: 10px; background: var(--border);"></div>
+                <div class="icon-item" title="Shapes tools" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Shapes</div>
+                <div class="icon-item" title="Path tools" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Path</div>
+                <div class="icon-item" title="Group" style="width: 40px; height: 40px; background: var(--bg-panel); text-align: center; line-height: 40px; cursor: pointer;">Group</div>
+            </div>
+
+            <!-- OUTLINER/ASSSETS PANEL -->
+            <div class="outliner-panel">
+                <div class="outliner-tabs">
+                    <button class="tab active">Outliner</button>
+                    <button class="tab">Assets</button>
+                </div>
+                <div class="outlined">
+                    <div class="tree">
+                        <div class="tree-item">
+                            <span class="tree-item-icon group"></span>
+                            <span>⊞ Main Scene</span>
+                            <div class="expand-btn">▼</div>
+                        </div>
+                        <div class="tree-item">
+                            <span class="tree-item-icon group"></span>
+                            <span>  ⬇ Spinner Ring</span>
+                            <div class="expand-btn">▶</div>
+                        </div>
+                        <div class="tree-item">
+                            <span class="tree-item-icon ellipse"></span>
+                            <span>    ○ Ellipse Shape 1</span>
+                        </div>
+                        <div class="tree-item">
+                            <span class="tree-item-icon effect"></span>
+                            <span>    ▶ ◉ Trim Path</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANVAS -->
+        <div class="canvas">
+            <div class="canvas-controls">
+                <div class="canvas-label">Main Scene</div>
+                <div class="zoom-controls">
+                    <button>—</button>
+                    <span>72%</span>
+                    <button>+</button>
+                </div>
+            </div>
+            <div class="canvas-area">
+                <!-- Contenu du canvas (exemple de forme) -->
+                <svg viewBox="0 0 100 100" width="100%" height="100%">
+                    <!-- Selection handles (exemple) -->
+                    <rect x="25" y="25" width="50" height="50" fill="none" stroke="#3d8eff" stroke-dasharray="4 2" stroke-width="2"/>
+                    <rect x="20" y="20" width="10" height="10" fill="#3d8eff"/>
+                    <rect x="70" y="20" width="10" height="10" fill="#3d8eff"/>
+                    <rect x="20" y="70" width="10" height="10" fill="#3d8eff"/>
+                    <rect x="70" y="70" width="10" height="10" fill="#3d8eff"/>
+                    <circle cx="50" cy="50" r="6" fill="#3d8eff"/>
+                </svg>
+                <!-- Zoom indicator in canvas top-left -->
+                <div class="canvas-zoom-badge">72%</div>
+            </div>
+        </div>
+
+        <!-- PROPERTIES PANEL -->
+        <div class="sidebar-right">
+            <div class="properties">
+                <div class="property-section">
+                    <div class="property-section-title">Transform</div>
+                    <div class="property-item">
+                        <div class="property-label">Name</div>
+                        <div class="value-container">
+                            <div class="value">Spinner Ring</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">X</div>
+                        <div class="value-container">
+                            <div class="value">[256]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Y</div>
+                        <div class="value-container">
+                            <div class="value">[256]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">W</div>
+                        <div class="value-container">
+                            <div class="value">[100%]</div>
+                            <div class="keyframe-btn">◇</div>
+                            <div class="proportional-link">
+                                <button>↔</button>
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">H</div>
+                        <div class="value-container">
+                            <div class="value">[100%]</div>
+                            <div class="keyframe-btn">◇</div>
+                            <div class="proportional-link">
+                                <button>↕</button>
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path d="M3 19v-4h4v4h10v-4h4v4h4V5H7v4H3v10z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Rotation</div>
+                        <div class="value-container">
+                            <div class="value">[0°]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Skew</div>
+                        <div class="value-container">
+                            <div class="value">[0°]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-section">
+                    <div class="property-section-title">Anchor point</div>
+                    <div class="property-item">
+                        <div class="property-label"></div>
+                        <div class="value-container">
+                            <div class="value">[👁]</div>
+                            <!-- Grille 3x3 simple -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 20px); gap: 2px;">
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: var(--accent);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                                <div style="width: 20px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-section">
+                    <div class="property-section-title">Layer</div>
+                    <div class="property-item">
+                        <div class="property-label"></div>
+                        <div class="value-container">
+                            <div class="value">[◎ 100%]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label"></div>
+                        <div class="value-container">
+                            <div class="value">[Normal ▾]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label"></div>
+                        <div class="value-container">
+                            <div class="value">[👁]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-section">
+                    <div class="property-section-title">Appearance (+)</div>
+                    <!-- Exemple de section remplie -->
+                    <div class="property-item">
+                        <div class="property-label">Fill</div>
+                        <div class="value-container">
+                            <div class="value">[●]</div>
+                            <div class="value" style="width: 20px; height: 20px; background: #334155;"></div>
+                            <div class="value">#334155</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Stroke</div>
+                        <div class="value-container">
+                            <div class="value">[≡]</div>
+                            <div class="value">12</div>
+                            <div class="keyframe-btn">◇</div>
+                            <div class="value">[◎ 100%]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="property-section">
+                    <div class="property-section-title">Trim path (—)</div>
+                    <div class="property-item">
+                        <div class="property-label">Trim start</div>
+                        <div class="value-container">
+                            <div class="value">[→ 0%]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Trim end</div>
+                        <div class="value-container">
+                            <div class="value">[→ 70%]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Trim offset</div>
+                        <div class="value-container">
+                            <div class="value">[◎ 306°]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                    <div class="property-item">
+                        <div class="property-label">Roundness</div>
+                        <div class="value-container">
+                            <div class="value">[0]</div>
+                            <div class="keyframe-btn">◇</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TIMELINE -->
+        <div class="timeline">
+            <div class="timeline-left">
+                <div class="timeline-layers">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;">
+                        <span>Layers</span>
+                        <div>
+                            <button>+</button>
+                            <button>↺</button>
+                        </div>
+                    </div>
+                    <div class="timeline-layer-item">
+                        <span class="timeline-layer-icon group"></span>
+                        <span class="timeline-layer-name">Spinner Ring</span>
+                        <div class="timeline-layer-ops">
+                            <button title="Solo">●</button>
+                            <button title="Link">🔗</button>
+                            <button title="Lock">🔒</button>
+                            <button title="Eye">👁</button>
+                        </div>
+                    </div>
+                    <div class="timeline-layer-item">
+                        <span class="timeline-layer-icon ellipse"></span>
+                        <span class="timeline-layer-name">Ellipse Shape 1</span>
+                        <div class="timeline-layer-ops">
+                            <button title="Solo">●</button>
+                            <button title="Link">🔗</button>
+                            <button title="Lock">🔒</button>
+                            <button title="Eye">👁</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timeline-right">
+                <div class="timeline-ruler">
+                    <!-- Graduations de 0s à 4s -->
+                    <div>0s</div>
+                    <div>1s</div>
+                    <div>2s</div>
+                    <div>3s</div>
+                    <div>4s</div>
+                </div>
+                <div class="playhead-container">
+                    <div class="playhead-line"></div>
+                    <div class="playhead-label">32</div>
+                </div>
+                <div class="track-container">
+                    <div class="track-bar" style="width: 60%;"></div>
+                    <div class="track-bar" style="width: 80%;"></div>
+                    <div class="track-label">Spinner Ring</div>
+                    <div class="track-label">Ellipse Shape 1</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Ajoutez ici des interactions basiques si nécessaires
+        document.querySelectorAll('.tool-icon').forEach(icon => {
+            icon.addEventListener('click', () => {
+                alert(`Outil ${icon.title} activé`);
+            });
+        });
+    </script>
+</body>
+</html>
